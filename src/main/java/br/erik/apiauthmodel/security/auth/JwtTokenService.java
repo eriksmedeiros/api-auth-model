@@ -16,10 +16,10 @@ import java.time.ZonedDateTime;
 public class JwtTokenService {
 
     @Value("${jwt.private-key-path}")
-    private static String SECRET_KEY;
+    private String SECRET_KEY;
 
     @Value("${jwt.public-key-path}")
-    private static String PUBLIC_KEY;
+    private String PUBLIC_KEY;
 
     public String generateToken(UserDetailsImpl user) {
         try {
