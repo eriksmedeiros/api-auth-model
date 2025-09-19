@@ -4,6 +4,7 @@ import br.erik.apiauthmodel.entities.User;
 import br.erik.apiauthmodel.repositories.UserRepository;
 import br.erik.apiauthmodel.security.config.SecurityConfiguration;
 import br.erik.apiauthmodel.security.userdetails.UserDetailsImpl;
+import br.erik.apiauthmodel.security.userdetails.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,45 +26,41 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     private JwtTokenService jwtTokenService;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException
-    { // Verifica se o endpoint requer autenticação antes de processar a requisição
-        
-           if(checkIfEndPointIsNotPublic(request)) {
-               String token = recoveryToken(request); // Recupera o token do cabeçalho Authorization da requisição
-               if (token != null) {
-                   String subject = jwtTokenService.getSubjectFromToken(token); // Obtém o assunto (neste caso, o nome de usuário) do token
-                   User user = userRepository.findByEmail(subject).get(); // Busca o usuário pelo email (que é o assunto do token)
-                   UserDetailsImpl userDetails = new UserDetailsImpl(user); // Cria um UserDetails com o usuário encontrado
+            throws ServletException, IOException { // Verifica se o endpoint requer autenticação antes de processar a requisição
 
-                   // Cria um objeto de autenticação do Spring Security
-                   Authentication authentication = new UsernamePasswordAuthenticationToken(
-                           userDetails.getUsername(), null, userDetails.getAuthorities());
+        String token = recoveryToken(request); // Recupera o token do cabeçalho Authorization da requisição
+        if (token != null) {
+            String subject = jwtTokenService.getSubjectFromToken(token); // Obtém o assunto (neste caso, o nome de usuário) do token
 
-                   // Define o objeto de autenticação no contexto de segurança do Spring Security
-                   SecurityContextHolder.getContext().setAuthentication(authentication);
-               } else {
-                   throw new RuntimeException("The token is null");
-               }
-           }
-           filterChain.doFilter(request, response); // Continua o processamento da requisição
-      }
+            UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(subject); // Cria um UserDetails com o usuário encontrado
+
+            // Cria um objeto de autenticação do Spring Security
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails.getUsername(), null, userDetails.getAuthorities());
+
+            // Define o objeto de autenticação no contexto de segurança do Spring Security
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+
+        filterChain.doFilter(request, response); // Continua o processamento da requisição
+    }
 
     // Recupera o token do cabeçalho Authorization da requisição
     private String recoveryToken(HttpServletRequest request) {
-        String authorizationHeader = request.getHeader("Authorization");
-        if(authorizationHeader != null) {
-            return authorizationHeader.replace("Bearer ", "");
+        String authHeader = request.getHeader("Authorization");
+
+        if (validateTokenHeader(authHeader)) {
+            return authHeader.replace("Bearer ", "");
         }
+
         return null;
     }
 
-    // Verifica se o endpoint requer autenticação antes de processar a requisição
-    private boolean checkIfEndPointIsNotPublic(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        return !Arrays.asList(SecurityConfiguration.ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED).contains(requestURI);
+    private boolean validateTokenHeader(String authHeader){
+        return authHeader != null && authHeader.startsWith("Bearer ");
     }
 }
