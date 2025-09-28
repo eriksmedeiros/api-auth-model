@@ -8,8 +8,9 @@ Este repositório foi desenvolvido como parte de meus estudos em Spring Security
 
 - Java (JDK 17+ recomendado)
 - Maven
-- Docker e Docker Compose (opcional, para infraestrutura local)
 - Spring Boot (ver `pom.xml` do projeto para confirmar versões e starters)
+- Docker e Docker Compose (opcional, para Banco de Dados)
+- Swagger/OpenAPI
 
 
 ---
